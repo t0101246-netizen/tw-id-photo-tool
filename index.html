@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TW 證件照 DIY 神器｜手機自拍・超商列印・真實尺寸校正</title>
+    <meta name="description" content="免費、免上傳、保護隱私的台灣證件照 DIY 工具。手機自拍，自動排版 4x6 英吋，內建螢幕尺規校正功能。">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #059669;
+            --danger-color: #dc2626;
+            --bg-color: #f3f4f6;
+            --panel-bg: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header { text-align: center; margin-bottom: 25px; }
+        h1 { margin: 0 0 10px 0; font-size: 1.8rem; letter-spacing: 1px; }
+        .subtitle { color: #666; font-size: 1rem; }
+
+        .container {
+            background: var(--panel-bg);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-sizing: border-box;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8fafc;
+        }
+        .upload-area:hover { border-color: var(--primary-color); background: #eff6ff; }
+
+        .editor-container { display: none; flex-direction: column; gap: 20px; }
+
+        /* 拍照提醒 */
+        .tips-box {
+            background-color: #fff1f2;
+            border: 2px solid #fda4af;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: left;
+        }
+        .tips-title { color: #be123c; font-weight: 800; font-size: 1.3rem; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+        .tips-list { margin: 0; padding-left: 25px; color: #881337; font-size: 1.1rem; line-height: 1.6; }
+        .tips-list li { margin-bottom: 5px; }
+        .highlight { font-weight: 800; color: #be123c; text-decoration: underline; text-decoration-thickness: 2px; }
+
+        /* Cropper */
+        .cropper-wrapper {
+            height: 400px;
+            background: #333;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        @media (min-width: 640px) { .cropper-wrapper { height: 500px; } }
+
+        .overlay-guide {
+            position: absolute; top: 50%; left: 50%; width: 200px; height: 257px; 
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 2; opacity: 0.6;
+            border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50% 50% 45% 45%;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6); display: flex; justify-content: center;
+        }
+        .guide-label { position: absolute; color: rgba(255,255,255,0.9); font-size: 14px; font-weight: bold; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+
+        .result-container { display: none; flex-direction: column; align-items: center; gap: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+
+        .msg-box-print { display: none; background-color: #fef2f2; border: 2px solid var(--danger-color); border-radius: 8px; padding: 20px; width: 100%; box-sizing: border-box; text-align: left; }
+        .msg-box-digital { display: none; background-color: #f0fdf4; border: 1px solid var(--secondary-color); border-radius: 8px; padding: 15px; width: 100%; box-sizing: border-box; text-align: center; color: #065f46; }
+        
+        .instruction-list { list-style: none; padding: 0; margin: 0; font-size: 1.1rem; line-height: 1.8; }
+        .instruction-list li.correct { color: #065f46; background: #d1fae5; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; border-left: 5px solid #059669; font-weight: bold; }
+        .instruction-list li.wrong { color: #991b1b; background: #fee2e2; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #dc2626; font-weight: bold; }
+
+        canvas { max-width: 100%; height: auto; border: 1px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        .controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        
+        .btn {
+            background-color: var(--primary-color); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer;
+            font-size: 1rem; font-weight: 600; transition: transform 0.1s, opacity 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .btn:hover { opacity: 0.95; transform: translateY(-1px); }
+        .btn:active { transform: translateY(1px); }
+        .btn.secondary { background-color: #64748b; }
+        .btn.success { background-color: var(--secondary-color); }
+        .btn.outline { background: transparent; border: 2px solid #64748b; color: #64748b; }
+        .btn.outline:hover { background: #f1f5f9; }
+
+        /* 校正 Modal 樣式 (優化版) */
+        #measureModal {
+            display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); z-index:9999; 
+            justify-content:center; align-items:center; flex-direction:column; color:white; padding: 10px; box-sizing: border-box; backdrop-filter: blur(5px);
+        }
+        
+        /* 內容容器：移除 overflow，改為 flex-wrap 自動換行置中，移除不必要的卷軸 */
+        .measure-content {
+            display: flex; 
+            flex-direction: row; 
+            align-items: center; /* 垂直置中 */
+            justify-content: center; /* 水平置中 */
+            gap: 30px; 
+            flex-wrap: wrap; /* 空間不足時自動換行 */
+            max-width: 100%; 
+            padding: 20px;
+            background: rgba(255,255,255,0.08); 
+            border-radius: 16px; 
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* 手機版適配：縮小間距 */
+        @media (max-width: 600px) { 
+            .measure-content { gap: 15px; padding: 15px; } 
+            h2 { font-size: 1.4rem !important; }
+        }
+
+        input[type=range] { cursor: pointer; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🇹🇼 TW 證件照 DIY 神器</h1>
+        <div class="subtitle">手機自拍 · AI 規格 · 超商 4x6 立即印</div>
+    </header>
+
+    <div class="container">
+        
+        <!-- 步驟 1: 上傳 -->
+        <div class="upload-area" id="uploadDropZone">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="margin-bottom:15px">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p style="font-size: 1.2rem; font-weight: bold; margin:0;">點擊或拖曳圖片至此</p>
+            <p style="color: #666; margin-top: 8px;">支援 JPG / PNG</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+
+        <!-- 步驟 2: 裁切與調整 -->
+        <div class="editor-container" id="editorContainer">
+            
+            <div class="tips-box">
+                <div class="tips-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    拍照重點提醒：
+                </div>
+                <ol class="tips-list">
+                    <li>背景：找一面 <span class="highlight">乾淨白牆</span>，避免雜物。</li>
+                    <li>光線：面向光源，<span class="highlight">移除背後陰影</span> (人離牆50cm)。</li>
+                    <li>儀容：<span class="highlight">眉毛、耳朵</span> 須露出，不可露齒笑。</li>
+                </ol>
+            </div>
+
+            <div class="cropper-wrapper">
+                <img id="imageToCrop" style="max-width: 100%;">
+                <div class="overlay-guide">
+                    <span class="guide-label" style="top: 10px;">頭頂</span>
+                    <span class="guide-label" style="bottom: 10px;">下巴</span>
+                    <div style="position: absolute; top: 13%; width: 100%; border-top: 1px dashed rgba(255,100,100,0.8);"></div>
+                    <div style="position: absolute; bottom: 15%; width: 100%; border-top: 1px dashed rgba(255,255,255,0.8);"></div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn outline" id="measureBtn">📏 螢幕尺規校正</button>
+                <button class="btn secondary" id="resetBtn">重選</button>
+                <button class="btn success" id="singleBtn">下載單張</button>
+                <button class="btn" id="layoutBtn">排版 4x6</button>
+            </div>
+        </div>
+
+        <!-- 步驟 3: 結果 -->
+        <div class="result-container" id="resultContainer">
+            <div id="msgDigital" class="msg-box-digital">
+                <p style="margin:0; font-weight:bold; font-size: 1.1rem;">✅ 數位用途單張 (高畫質)</p>
+                <p style="margin:5px 0 0 0; opacity: 0.8;">適合線上申辦證件，不適合直接列印。</p>
+            </div>
+            <div id="msgPrint" class="msg-box-print">
+                <div style="color:var(--danger-color); font-weight:800; font-size:1.2rem; margin-bottom:10px;">⚠️ 超商列印必讀 (省錢密技)</div>
+                <ul class="instruction-list">
+                    <li class="correct">✅ 請選：「一般生活照 / 4x6 相片」 (約6-10元)</li>
+                    <li class="wrong">❌ 勿選：「證件照模式」 (會變形且浪費錢)</li>
+                </ul>
+            </div>
+            <canvas id="outputCanvas"></canvas>
+            <div class="controls">
+                 <button class="btn secondary" id="backBtn">返回微調</button>
+                 <a id="downloadLink" class="btn">下載 JPG 圖檔</a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 📏 螢幕校正與測量 Modal (無卷軸優化版) -->
+    <div id="measureModal">
+        <h2 style="margin: 0 0 10px 0; color:#fbbf24; font-size: 1.8rem; text-align:center;">📏 1:1 真實尺寸校正</h2>
+        <p style="text-align:center; max-width:600px; color:#fff; margin-bottom:20px; font-size: 1.1rem; line-height: 1.5;">
+            1. 拿出<b>信用卡/健保卡</b>貼在螢幕黃框上。<br>
+            2. 用<b>滑鼠拖曳</b>或<b>鍵盤左右鍵</b>調整至完全重疊。
+        </p>
+
+        <!-- 拉桿控制 -->
+        <div style="display:flex; flex-direction:column; align-items:center; gap:5px; margin-bottom:20px; background:rgba(255,255,255,0.15); padding:10px 30px; border-radius:30px;">
+            <div style="display:flex; gap:15px; align-items:center;">
+                <span style="font-size:1.1rem; font-weight:bold;">縮小</span>
+                <input type="range" id="calibrationSlider" min="150" max="800" value="323" step="0.5" style="width:220px; cursor: pointer; height: 25px;">
+                <span style="font-size:1.1rem; font-weight:bold;">放大</span>
+            </div>
+            <div style="font-size: 0.95rem; color: #eee;">
+                💡 按住 Shift + ⬅️ ➡️ 可快速調整
+            </div>
+        </div>
+
+        <!-- 內容區：改用 flex-center 取代 overflow -->
+        <div class="measure-content">
+            <div id="creditCardGuide" style="
+                width: 323px; height: 203px;
+                border: 3px solid #fbbf24; border-radius: 12px; background: rgba(251, 191, 36, 0.2);
+                display: flex; flex-direction: column; justify-content: center; align-items: center;
+                flex-shrink: 0; position: relative; box-shadow: 0 0 25px rgba(251, 191, 36, 0.3);
+            ">
+                <div style="font-size:1.4rem; font-weight:800; color:#fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">💳 信用卡/健保卡</div>
+                <div style="font-size:1.1rem; color:#fff; margin-top:8px; font-weight:bold; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">請貼在此處比對</div>
+                <div style="position:absolute; bottom:-35px; color:#fbbf24; font-size:1.1rem; font-weight:bold;">標準寬度 85.6mm</div>
+            </div>
+
+            <div style="text-align:center; min-width: 150px;">
+                <div style="border: 3px solid white; display: inline-block; background: #fff; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
+                    <img id="measurePreviewImg" src="" style="display:block; width: 132px;">
+                </div>
+                <div style="margin-top:15px; color:white; font-size:1.2rem; font-weight: 800; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">⬆️ 現在拿尺量這張</div>
+                <div style="color:#ddd; font-size:1rem; margin-top:5px;">(頭頂~下巴應為 3.2-3.6cm)</div>
+            </div>
+        </div>
+
+        <button id="closeMeasureBtn" style="margin-top:30px; padding:12px 50px; background:white; color:black; border:none; border-radius:40px; cursor:pointer; font-weight:800; font-size: 1.2rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">關閉測量</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+    <script>
+        class IDPhotoGenerator {
+            constructor() {
+                this.DPI = 300;
+                this.MM_TO_INCH = 25.4; 
+                this.PHOTO_WIDTH_MM = 35;
+                this.PHOTO_HEIGHT_MM = 45;
+                this.photoW = Math.ceil((this.PHOTO_WIDTH_MM / this.MM_TO_INCH) * this.DPI);
+                this.photoH = Math.ceil((this.PHOTO_HEIGHT_MM / this.MM_TO_INCH) * this.DPI);
+                this.PAPER_WIDTH_INCH = 6;
+                this.PAPER_HEIGHT_INCH = 4;
+                this.canvasW = this.PAPER_WIDTH_INCH * this.DPI;
+                this.canvasH = this.PAPER_HEIGHT_INCH * this.DPI;
+
+                this.cropper = null;
+                this.initElements();
+                this.initEvents();
+            }
+
+            initElements() {
+                this.fileInput = document.getElementById('fileInput');
+                this.uploadArea = document.getElementById('uploadDropZone');
+                this.editorContainer = document.getElementById('editorContainer');
+                this.imageToCrop = document.getElementById('imageToCrop');
+                this.singleBtn = document.getElementById('singleBtn');
+                this.layoutBtn = document.getElementById('layoutBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.backBtn = document.getElementById('backBtn');
+                this.resultContainer = document.getElementById('resultContainer');
+                this.msgDigital = document.getElementById('msgDigital');
+                this.msgPrint = document.getElementById('msgPrint');
+                this.outputCanvas = document.getElementById('outputCanvas');
+                this.downloadLink = document.getElementById('downloadLink');
+                this.ctx = this.outputCanvas.getContext('2d');
+
+                // 校正 Modal
+                this.measureBtn = document.getElementById('measureBtn');
+                this.measureModal = document.getElementById('measureModal');
+                this.closeMeasureBtn = document.getElementById('closeMeasureBtn');
+                this.calibrationSlider = document.getElementById('calibrationSlider');
+                this.creditCardGuide = document.getElementById('creditCardGuide');
+                this.measurePreviewImg = document.getElementById('measurePreviewImg');
+            }
+
+            initEvents() {
+                this.uploadArea.addEventListener('click', () => this.fileInput.click());
+                this.fileInput.addEventListener('change', (e) => this.handleFile(e.target.files[0]));
+                this.uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); this.uploadArea.style.borderColor = '#2563eb'; });
+                this.uploadArea.addEventListener('dragleave', (e) => { e.preventDefault(); this.uploadArea.style.borderColor = '#cbd5e1'; });
+                this.uploadArea.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer.files.length) this.handleFile(e.dataTransfer.files[0]); });
+
+                this.layoutBtn.addEventListener('click', () => this.generateLayout());
+                this.singleBtn.addEventListener('click', () => this.generateSingle());
+                this.resetBtn.addEventListener('click', () => location.reload());
+                this.backBtn.addEventListener('click', () => {
+                    this.resultContainer.style.display = 'none';
+                    this.editorContainer.style.display = 'flex';
+                });
+
+                // --- 校正功能 ---
+                this.measureBtn.addEventListener('click', () => {
+                    if (!this.cropper) return;
+                    const croppedCanvas = this.getCroppedImage();
+                    if (!croppedCanvas) return;
+                    
+                    this.measurePreviewImg.src = croppedCanvas.toDataURL();
+                    this.measureModal.style.display = 'flex';
+                    
+                    this.calibrationSlider.value = 323; 
+                    this.updateCalibration(323);
+
+                    setTimeout(() => {
+                        this.calibrationSlider.focus();
+                    }, 100);
+                });
+
+                this.closeMeasureBtn.addEventListener('click', () => {
+                    this.measureModal.style.display = 'none';
+                });
+
+                this.calibrationSlider.addEventListener('input', (e) => {
+                    this.updateCalibration(e.target.value);
+                });
+
+                // 鍵盤邏輯
+                this.calibrationSlider.addEventListener('keydown', (e) => {
+                    const stepNormal = 0.5;
+                    const stepFast = 10;
+                    let currentValue = parseFloat(this.calibrationSlider.value);
+                    
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        const step = e.shiftKey ? stepFast : stepNormal;
+                        currentValue = Math.max(parseFloat(this.calibrationSlider.min), currentValue - step);
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        const step = e.shiftKey ? stepFast : stepNormal;
+                        currentValue = Math.min(parseFloat(this.calibrationSlider.max), currentValue + step);
+                    } else {
+                        return;
+                    }
+
+                    this.calibrationSlider.value = currentValue;
+                    this.updateCalibration(currentValue);
+                });
+            }
+
+            handleFile(file) {
+                if (!file || !file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.imageToCrop.src = e.target.result;
+                    this.uploadArea.style.display = 'none';
+                    this.editorContainer.style.display = 'flex';
+                    setTimeout(() => this.initCropper(), 50);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            initCropper() {
+                if (this.cropper) this.cropper.destroy();
+                this.cropper = new Cropper(this.imageToCrop, {
+                    aspectRatio: this.PHOTO_WIDTH_MM / this.PHOTO_HEIGHT_MM,
+                    viewMode: 1,
+                    dragMode: 'move',
+                    autoCropArea: 0.8,
+                    guides: true,
+                    center: true,
+                    background: false,
+                });
+            }
+
+            getCroppedImage() {
+                if (!this.cropper) return null;
+                return this.cropper.getCroppedCanvas({
+                    width: this.photoW,
+                    height: this.photoH,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                });
+            }
+
+            updateCalibration(cardWidthPx) {
+                this.creditCardGuide.style.width = `${cardWidthPx}px`;
+                this.creditCardGuide.style.height = `${cardWidthPx / 1.586}px`;
+                const ratio = 35 / 85.6;
+                const photoDisplayWidth = cardWidthPx * ratio;
+                this.measurePreviewImg.style.width = `${photoDisplayWidth}px`;
+            }
+
+            generateSingle() {
+                const croppedCanvas = this.getCroppedImage();
+                if (!croppedCanvas) return;
+                this.outputCanvas.width = this.photoW;
+                this.outputCanvas.height = this.photoH;
+                this.ctx.clearRect(0, 0, this.photoW, this.photoH);
+                this.ctx.drawImage(croppedCanvas, 0, 0);
+                this.msgDigital.style.display = 'block';
+                this.msgPrint.style.display = 'none';
+                this.showResult(`ID_Photo_Single_${Date.now()}.jpg`);
+            }
+
+            generateLayout() {
+                const croppedCanvas = this.getCroppedImage();
+                if (!croppedCanvas) return;
+                this.outputCanvas.width = this.canvasW;
+                this.outputCanvas.height = this.canvasH;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(0, 0, this.canvasW, this.canvasH);
+                const ROWS = 2; const COLS = 4; const gap = 15; 
+                const totalContentW = (this.photoW * COLS) + (gap * (COLS - 1));
+                const totalContentH = (this.photoH * ROWS) + (gap * (ROWS - 1));
+                const startX = (this.canvasW - totalContentW) / 2;
+                const startY = (this.canvasH - totalContentH) / 2;
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const x = startX + col * (this.photoW + gap);
+                        const y = startY + row * (this.photoH + gap);
+                        this.ctx.drawImage(croppedCanvas, x, y, this.photoW, this.photoH);
+                        this.ctx.strokeStyle = '#e2e8f0';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.strokeRect(x, y, this.photoW, this.photoH);
+                    }
+                }
+                this.msgPrint.style.display = 'block';
+                this.msgDigital.style.display = 'none';
+                this.showResult(`ID_Photo_Print_4x6_${Date.now()}.jpg`);
+            }
+
+            showResult(filename) {
+                this.editorContainer.style.display = 'none';
+                this.resultContainer.style.display = 'flex';
+                const dataURL = this.outputCanvas.toDataURL('image/jpeg', 0.95);
+                this.downloadLink.href = dataURL;
+                this.downloadLink.download = filename;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new IDPhotoGenerator();
+        });
+    </script>
+</body>
+</html>
