@@ -27,7 +27,7 @@
             align-items: center;
         }
 
-        header { text-align: center; margin-bottom: 25px; }
+        header { text-align: center; margin-bottom: 20px; }
         h1 { margin: 0 0 10px 0; font-size: 1.8rem; letter-spacing: 1px; }
         .subtitle { color: #666; font-size: 1rem; }
 
@@ -43,6 +43,22 @@
             gap: 20px;
             box-sizing: border-box;
         }
+
+        /* --- ✨ 新增：電腦操作建議區塊 ✨ --- */
+        .pc-recommend-box {
+            background-color: #e0f2fe; /* 淺藍色 */
+            border: 2px solid #38bdf8;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: left;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.95rem;
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+        .pc-icon { font-size: 1.5rem; }
 
         .upload-area {
             border: 3px dashed #cbd5e1;
@@ -71,10 +87,8 @@
 
         /* --- 裁切區 --- */
         .cropper-wrapper {
-            /* 手機版使用相對高度 60vh，確保按鈕看得到 */
             height: 60vh;
-            /* 限制最大與最小高度，確保在各種裝置都合理 */
-            max-height: 500px; 
+            max-height: 500px;
             min-height: 350px;
             background: #333;
             position: relative;
@@ -83,25 +97,25 @@
             margin-bottom: 10px;
         }
 
-        /* --- ✨ 輔助線 (終極修正版) ✨ --- */
+        /* --- 輔助線 (改用相對容器寬度，最穩定的做法) --- */
         .overlay-guide {
             position: absolute;
             top: 50%; left: 50%;
-            transform: translate(-50%, -50%); /* 絕對置中 */
+            transform: translate(-50%, -50%);
             pointer-events: none;
             z-index: 2;
             opacity: 0.85;
             
-            /* 1. 基礎設定：鎖定比例 */
+            /* 【手機版與電腦版通用設定】 */
+            /* 不再抓螢幕寬度，而是抓「黑色裁切區」的寬度 */
+            width: 60%; 
+            max-width: 250px; /* 電腦版最大上限 */
+            
+            /* 讓高度自動，但不能超過容器高度的 80% */
+            height: auto;
+            max-height: 80%;
+            
             aspect-ratio: 35 / 45; 
-            
-            /* 2. 大小控制策略：以寬度為主，但設有天花板 */
-            width: 60%;       /* 預設：佔黑色區域寬度的 60% (手機剛好) */
-            height: auto;     /* 高度自動計算 */
-            
-            /* 3. 安全防線：防止在特殊螢幕比例下爆版 */
-            max-height: 85%;  /* 高度絕對不超過黑色區域的 85% */
-            max-width: 250px; /* 寬度絕對不超過 250px (防止電腦版變巨無霸) */
 
             border: 2px solid rgba(255, 255, 255, 0.7);
             border-radius: 50% 50% 45% 45%;
@@ -111,6 +125,7 @@
         .guide-line-top { position: absolute; top: 12%; width: 100%; border-top: 2px dashed #ff4444; }
         .guide-line-bottom { position: absolute; bottom: 12%; width: 100%; border-top: 2px dashed #ff4444; }
         
+        /* 文字移到外部，避免擋臉 */
         .guide-text {
             position: absolute; width: 200%; left: -50%; text-align: center; color: #ff4444;
             font-size: 14px; font-weight: bold; text-shadow: 0 1px 3px rgba(0,0,0,1); white-space: nowrap;
@@ -163,6 +178,16 @@
     </header>
 
     <div class="container">
+        
+        <!-- ✨ 電腦操作建議區塊 ✨ -->
+        <div class="pc-recommend-box">
+            <span class="pc-icon">💻</span>
+            <div>
+                <b>強烈建議使用電腦製作！</b><br>
+                手機螢幕較小不易精準裁切，且無法使用「實體校正」功能。若要確保 100% 成功率，請將照片傳至電腦操作。
+            </div>
+        </div>
+
         <!-- 步驟 1: 上傳 -->
         <div class="upload-area" id="uploadDropZone">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="margin-bottom:15px">
@@ -196,11 +221,10 @@
             <div class="cropper-wrapper">
                 <img id="imageToCrop" style="max-width: 100%;">
                 
-                <!-- 輔助框 (文字移到外部，避免擋臉) -->
+                <!-- 輔助框 (文字移到外部) -->
                 <div class="overlay-guide">
                     <div class="guide-line-top"></div>
                     <div class="guide-text" style="top: -30px;">頭頂對齊紅線</div>
-                    
                     <div class="guide-line-bottom"></div>
                     <div class="guide-text" style="bottom: -30px;">下巴對齊紅線</div>
                 </div>
