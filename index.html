@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TW 證件照 DIY 神器｜手機自拍・超商列印・真實尺寸校正</title>
-    <meta name="description" content="免費、免上傳、保護隱私的台灣證件照 DIY 工具。手機自拍，自動排版 4x6 英吋，內建螢幕尺規校正功能。">
+    <meta name="description" content="免費、免上傳、保護隱私的台灣證件照 DIY 工具。手機自拍，自動排版 4x6 英吋，內建螢幕尺規校正與列印檢核尺。">
+    <!-- Cropper.js CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
     <style>
         :root {
@@ -69,23 +70,40 @@
         .tips-list li { margin-bottom: 5px; }
         .highlight { font-weight: 800; color: #be123c; text-decoration: underline; text-decoration-thickness: 2px; }
 
-        /* Cropper */
+        /* --- 裁切區 (RWD 優化) --- */
         .cropper-wrapper {
-            height: 400px;
+            height: 60vh;
+            max-height: 500px;
+            min-height: 300px;
             background: #333;
             position: relative;
             border-radius: 8px;
             overflow: hidden;
+            margin-bottom: 10px;
         }
-        @media (min-width: 640px) { .cropper-wrapper { height: 500px; } }
 
+        /* --- 嚴格版輔助線 (RWD) --- */
         .overlay-guide {
-            position: absolute; top: 50%; left: 50%; width: 200px; height: 257px; 
-            transform: translate(-50%, -50%); pointer-events: none; z-index: 2; opacity: 0.6;
-            border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50% 50% 45% 45%;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6); display: flex; justify-content: center;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.8;
+            width: 50vw; max-width: 220px;
+            aspect-ratio: 35 / 45; 
+            height: auto; 
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50% 50% 45% 45%;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
         }
-        .guide-label { position: absolute; color: rgba(255,255,255,0.9); font-size: 14px; font-weight: bold; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+
+        .guide-line-top { position: absolute; top: 10%; width: 100%; border-top: 2px dashed #ff4444; }
+        .guide-line-bottom { position: absolute; bottom: 10%; width: 100%; border-top: 2px dashed #ff4444; }
+        .guide-text {
+            position: absolute; width: 100%; text-align: center; color: #ff4444;
+            font-size: 14px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;
+        }
 
         .result-container { display: none; flex-direction: column; align-items: center; gap: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px; }
 
@@ -111,33 +129,21 @@
         .btn.outline { background: transparent; border: 2px solid #64748b; color: #64748b; }
         .btn.outline:hover { background: #f1f5f9; }
 
-        /* 校正 Modal 樣式 (優化版) */
+        /* 手機版隱藏螢幕校正按鈕 */
+        @media (max-width: 768px) {
+            #measureBtn { display: none !important; }
+        }
+
+        /* 校正 Modal 樣式 */
         #measureModal {
             display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); z-index:9999; 
             justify-content:center; align-items:center; flex-direction:column; color:white; padding: 10px; box-sizing: border-box; backdrop-filter: blur(5px);
         }
-        
-        /* 內容容器：移除 overflow，改為 flex-wrap 自動換行置中，移除不必要的卷軸 */
         .measure-content {
-            display: flex; 
-            flex-direction: row; 
-            align-items: center; /* 垂直置中 */
-            justify-content: center; /* 水平置中 */
-            gap: 30px; 
-            flex-wrap: wrap; /* 空間不足時自動換行 */
-            max-width: 100%; 
-            padding: 20px;
-            background: rgba(255,255,255,0.08); 
-            border-radius: 16px; 
-            border: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 30px; flex-wrap: wrap; max-width: 100%; padding: 20px;
+            background: rgba(255,255,255,0.08); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
         }
-        
-        /* 手機版適配：縮小間距 */
-        @media (max-width: 600px) { 
-            .measure-content { gap: 15px; padding: 15px; } 
-            h2 { font-size: 1.4rem !important; }
-        }
-
+        @media (max-width: 600px) { .measure-content { gap: 15px; padding: 15px; } h2 { font-size: 1.4rem !important; } }
         input[type=range] { cursor: pointer; }
 
     </style>
@@ -150,7 +156,6 @@
     </header>
 
     <div class="container">
-        
         <!-- 步驟 1: 上傳 -->
         <div class="upload-area" id="uploadDropZone">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="margin-bottom:15px">
@@ -163,9 +168,8 @@
             <input type="file" id="fileInput" accept="image/*" style="display: none;">
         </div>
 
-        <!-- 步驟 2: 裁切與調整 -->
+        <!-- 步驟 2: 裁切 -->
         <div class="editor-container" id="editorContainer">
-            
             <div class="tips-box">
                 <div class="tips-title">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -185,10 +189,10 @@
             <div class="cropper-wrapper">
                 <img id="imageToCrop" style="max-width: 100%;">
                 <div class="overlay-guide">
-                    <span class="guide-label" style="top: 10px;">頭頂</span>
-                    <span class="guide-label" style="bottom: 10px;">下巴</span>
-                    <div style="position: absolute; top: 13%; width: 100%; border-top: 1px dashed rgba(255,100,100,0.8);"></div>
-                    <div style="position: absolute; bottom: 15%; width: 100%; border-top: 1px dashed rgba(255,255,255,0.8);"></div>
+                    <div class="guide-line-top"></div>
+                    <div class="guide-text" style="top: 5%;">頭頂對齊紅線</div>
+                    <div class="guide-line-bottom"></div>
+                    <div class="guide-text" style="bottom: 5%;">下巴對齊紅線</div>
                 </div>
             </div>
             
@@ -212,6 +216,9 @@
                     <li class="correct">✅ 請選：「一般生活照 / 4x6 相片」 (約6-10元)</li>
                     <li class="wrong">❌ 勿選：「證件照模式」 (會變形且浪費錢)</li>
                 </ul>
+                <p style="color:#666; font-size:0.9rem; margin-top:10px;">
+                    💡 中間已自動繪製 <b>1cm 檢查尺</b> (黑色實心條)，印出後請先核對尺寸。
+                </p>
             </div>
             <canvas id="outputCanvas"></canvas>
             <div class="controls">
@@ -219,30 +226,23 @@
                  <a id="downloadLink" class="btn">下載 JPG 圖檔</a>
             </div>
         </div>
-
     </div>
 
-    <!-- 📏 螢幕校正與測量 Modal (無卷軸優化版) -->
+    <!-- 📏 螢幕校正 Modal -->
     <div id="measureModal">
         <h2 style="margin: 0 0 10px 0; color:#fbbf24; font-size: 1.8rem; text-align:center;">📏 1:1 真實尺寸校正</h2>
         <p style="text-align:center; max-width:600px; color:#fff; margin-bottom:20px; font-size: 1.1rem; line-height: 1.5;">
             1. 拿出<b>信用卡/健保卡</b>貼在螢幕黃框上。<br>
             2. 用<b>滑鼠拖曳</b>或<b>鍵盤左右鍵</b>調整至完全重疊。
         </p>
-
-        <!-- 拉桿控制 -->
         <div style="display:flex; flex-direction:column; align-items:center; gap:5px; margin-bottom:20px; background:rgba(255,255,255,0.15); padding:10px 30px; border-radius:30px;">
             <div style="display:flex; gap:15px; align-items:center;">
                 <span style="font-size:1.1rem; font-weight:bold;">縮小</span>
                 <input type="range" id="calibrationSlider" min="150" max="800" value="323" step="0.5" style="width:220px; cursor: pointer; height: 25px;">
                 <span style="font-size:1.1rem; font-weight:bold;">放大</span>
             </div>
-            <div style="font-size: 0.95rem; color: #eee;">
-                💡 按住 Shift + ⬅️ ➡️ 可快速調整
-            </div>
+            <div style="font-size: 0.95rem; color: #eee;">💡 按住 Shift + ⬅️ ➡️ 可快速調整</div>
         </div>
-
-        <!-- 內容區：改用 flex-center 取代 overflow -->
         <div class="measure-content">
             <div id="creditCardGuide" style="
                 width: 323px; height: 203px;
@@ -254,7 +254,6 @@
                 <div style="font-size:1.1rem; color:#fff; margin-top:8px; font-weight:bold; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">請貼在此處比對</div>
                 <div style="position:absolute; bottom:-35px; color:#fbbf24; font-size:1.1rem; font-weight:bold;">標準寬度 85.6mm</div>
             </div>
-
             <div style="text-align:center; min-width: 150px;">
                 <div style="border: 3px solid white; display: inline-block; background: #fff; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
                     <img id="measurePreviewImg" src="" style="display:block; width: 132px;">
@@ -263,10 +262,10 @@
                 <div style="color:#ddd; font-size:1rem; margin-top:5px;">(頭頂~下巴應為 3.2-3.6cm)</div>
             </div>
         </div>
-
         <button id="closeMeasureBtn" style="margin-top:30px; padding:12px 50px; background:white; color:black; border:none; border-radius:40px; cursor:pointer; font-weight:800; font-size: 1.2rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">關閉測量</button>
     </div>
 
+    <!-- Script -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
     <script>
@@ -282,7 +281,6 @@
                 this.PAPER_HEIGHT_INCH = 4;
                 this.canvasW = this.PAPER_WIDTH_INCH * this.DPI;
                 this.canvasH = this.PAPER_HEIGHT_INCH * this.DPI;
-
                 this.cropper = null;
                 this.initElements();
                 this.initEvents();
@@ -303,7 +301,6 @@
                 this.outputCanvas = document.getElementById('outputCanvas');
                 this.downloadLink = document.getElementById('downloadLink');
                 this.ctx = this.outputCanvas.getContext('2d');
-
                 // 校正 Modal
                 this.measureBtn = document.getElementById('measureBtn');
                 this.measureModal = document.getElementById('measureModal');
@@ -319,7 +316,6 @@
                 this.uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); this.uploadArea.style.borderColor = '#2563eb'; });
                 this.uploadArea.addEventListener('dragleave', (e) => { e.preventDefault(); this.uploadArea.style.borderColor = '#cbd5e1'; });
                 this.uploadArea.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer.files.length) this.handleFile(e.dataTransfer.files[0]); });
-
                 this.layoutBtn.addEventListener('click', () => this.generateLayout());
                 this.singleBtn.addEventListener('click', () => this.generateSingle());
                 this.resetBtn.addEventListener('click', () => location.reload());
@@ -327,38 +323,22 @@
                     this.resultContainer.style.display = 'none';
                     this.editorContainer.style.display = 'flex';
                 });
-
-                // --- 校正功能 ---
+                // 校正功能
                 this.measureBtn.addEventListener('click', () => {
                     if (!this.cropper) return;
                     const croppedCanvas = this.getCroppedImage();
                     if (!croppedCanvas) return;
-                    
                     this.measurePreviewImg.src = croppedCanvas.toDataURL();
                     this.measureModal.style.display = 'flex';
-                    
                     this.calibrationSlider.value = 323; 
                     this.updateCalibration(323);
-
-                    setTimeout(() => {
-                        this.calibrationSlider.focus();
-                    }, 100);
+                    setTimeout(() => { this.calibrationSlider.focus(); }, 100);
                 });
-
-                this.closeMeasureBtn.addEventListener('click', () => {
-                    this.measureModal.style.display = 'none';
-                });
-
-                this.calibrationSlider.addEventListener('input', (e) => {
-                    this.updateCalibration(e.target.value);
-                });
-
-                // 鍵盤邏輯
+                this.closeMeasureBtn.addEventListener('click', () => { this.measureModal.style.display = 'none'; });
+                this.calibrationSlider.addEventListener('input', (e) => { this.updateCalibration(e.target.value); });
                 this.calibrationSlider.addEventListener('keydown', (e) => {
-                    const stepNormal = 0.5;
-                    const stepFast = 10;
+                    const stepNormal = 0.5; const stepFast = 10;
                     let currentValue = parseFloat(this.calibrationSlider.value);
-                    
                     if (e.key === 'ArrowLeft') {
                         e.preventDefault();
                         const step = e.shiftKey ? stepFast : stepNormal;
@@ -367,10 +347,7 @@
                         e.preventDefault();
                         const step = e.shiftKey ? stepFast : stepNormal;
                         currentValue = Math.min(parseFloat(this.calibrationSlider.max), currentValue + step);
-                    } else {
-                        return;
-                    }
-
+                    } else { return; }
                     this.calibrationSlider.value = currentValue;
                     this.updateCalibration(currentValue);
                 });
@@ -392,22 +369,14 @@
                 if (this.cropper) this.cropper.destroy();
                 this.cropper = new Cropper(this.imageToCrop, {
                     aspectRatio: this.PHOTO_WIDTH_MM / this.PHOTO_HEIGHT_MM,
-                    viewMode: 1,
-                    dragMode: 'move',
-                    autoCropArea: 0.8,
-                    guides: true,
-                    center: true,
-                    background: false,
+                    viewMode: 1, dragMode: 'move', autoCropArea: 0.8, guides: true, center: true, background: false,
                 });
             }
 
             getCroppedImage() {
                 if (!this.cropper) return null;
                 return this.cropper.getCroppedCanvas({
-                    width: this.photoW,
-                    height: this.photoH,
-                    imageSmoothingEnabled: true,
-                    imageSmoothingQuality: 'high',
+                    width: this.photoW, height: this.photoH, imageSmoothingEnabled: true, imageSmoothingQuality: 'high',
                 });
             }
 
@@ -438,21 +407,42 @@
                 this.outputCanvas.height = this.canvasH;
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.fillRect(0, 0, this.canvasW, this.canvasH);
-                const ROWS = 2; const COLS = 4; const gap = 15; 
-                const totalContentW = (this.photoW * COLS) + (gap * (COLS - 1));
-                const totalContentH = (this.photoH * ROWS) + (gap * (ROWS - 1));
+                
+                // 設定參數：加大排與排中間的間隙 (gapY) 用來放尺
+                const ROWS = 2; const COLS = 4;
+                const gapX = 15; // 左右間距
+                const gapY = 60; // ✨ 上下間距加大，留出空間給尺規
+                
+                const totalContentW = (this.photoW * COLS) + (gapX * (COLS - 1));
+                const totalContentH = (this.photoH * ROWS) + gapY;
                 const startX = (this.canvasW - totalContentW) / 2;
                 const startY = (this.canvasH - totalContentH) / 2;
+                
+                // 繪製 8 張照片
                 for (let row = 0; row < ROWS; row++) {
                     for (let col = 0; col < COLS; col++) {
-                        const x = startX + col * (this.photoW + gap);
-                        const y = startY + row * (this.photoH + gap);
+                        const x = startX + col * (this.photoW + gapX);
+                        const y = startY + row * (this.photoH + gapY);
                         this.ctx.drawImage(croppedCanvas, x, y, this.photoW, this.photoH);
                         this.ctx.strokeStyle = '#e2e8f0';
                         this.ctx.lineWidth = 1;
                         this.ctx.strokeRect(x, y, this.photoW, this.photoH);
                     }
                 }
+
+                // --- 繪製不擋圖的 1cm 參考尺 (Center Position) ---
+                const oneCm = 300 / 2.54; // 1cm 像素量 (約 118px)
+                const rulerX = this.canvasW / 2 - (oneCm / 2); // 水平置中
+                const rulerY = startY + this.photoH + (gapY / 2); // 垂直放在兩排照片中間
+                
+                this.ctx.fillStyle = '#000000';
+                this.ctx.fillRect(rulerX, rulerY - 5, oneCm, 10); // 畫一個 1cm 寬的黑條
+
+                // 標示文字
+                this.ctx.font = 'bold 24px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('1cm', this.canvasW / 2, rulerY + 30);
+
                 this.msgPrint.style.display = 'block';
                 this.msgDigital.style.display = 'none';
                 this.showResult(`ID_Photo_Print_4x6_${Date.now()}.jpg`);
@@ -466,10 +456,7 @@
                 this.downloadLink.download = filename;
             }
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            new IDPhotoGenerator();
-        });
+        document.addEventListener('DOMContentLoaded', () => { new IDPhotoGenerator(); });
     </script>
 </body>
 </html>
