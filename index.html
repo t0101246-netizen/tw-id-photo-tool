@@ -57,7 +57,6 @@
 
         .editor-container { display: none; flex-direction: column; gap: 20px; }
 
-        /* 拍照提醒 */
         .tips-box {
             background-color: #fff1f2;
             border: 2px solid #fda4af;
@@ -70,11 +69,13 @@
         .tips-list li { margin-bottom: 5px; }
         .highlight { font-weight: 800; color: #be123c; text-decoration: underline; text-decoration-thickness: 2px; }
 
-        /* --- 裁切區 (RWD 優化) --- */
+        /* --- 裁切區 --- */
         .cropper-wrapper {
+            /* 手機版使用相對高度 60vh，確保按鈕看得到 */
             height: 60vh;
-            max-height: 500px;
-            min-height: 300px;
+            /* 限制最大與最小高度，確保在各種裝置都合理 */
+            max-height: 500px; 
+            min-height: 350px;
             background: #333;
             position: relative;
             border-radius: 8px;
@@ -82,27 +83,37 @@
             margin-bottom: 10px;
         }
 
-        /* --- 嚴格版輔助線 (RWD) --- */
+        /* --- ✨ 輔助線 (終極修正版) ✨ --- */
         .overlay-guide {
             position: absolute;
             top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%); /* 絕對置中 */
             pointer-events: none;
             z-index: 2;
-            opacity: 0.8;
-            width: 50vw; max-width: 220px;
+            opacity: 0.85;
+            
+            /* 1. 基礎設定：鎖定比例 */
             aspect-ratio: 35 / 45; 
-            height: auto; 
-            border: 2px solid rgba(255, 255, 255, 0.5);
+            
+            /* 2. 大小控制策略：以寬度為主，但設有天花板 */
+            width: 60%;       /* 預設：佔黑色區域寬度的 60% (手機剛好) */
+            height: auto;     /* 高度自動計算 */
+            
+            /* 3. 安全防線：防止在特殊螢幕比例下爆版 */
+            max-height: 85%;  /* 高度絕對不超過黑色區域的 85% */
+            max-width: 250px; /* 寬度絕對不超過 250px (防止電腦版變巨無霸) */
+
+            border: 2px solid rgba(255, 255, 255, 0.7);
             border-radius: 50% 50% 45% 45%;
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
         }
 
-        .guide-line-top { position: absolute; top: 10%; width: 100%; border-top: 2px dashed #ff4444; }
-        .guide-line-bottom { position: absolute; bottom: 10%; width: 100%; border-top: 2px dashed #ff4444; }
+        .guide-line-top { position: absolute; top: 12%; width: 100%; border-top: 2px dashed #ff4444; }
+        .guide-line-bottom { position: absolute; bottom: 12%; width: 100%; border-top: 2px dashed #ff4444; }
+        
         .guide-text {
-            position: absolute; width: 100%; text-align: center; color: #ff4444;
-            font-size: 14px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;
+            position: absolute; width: 200%; left: -50%; text-align: center; color: #ff4444;
+            font-size: 14px; font-weight: bold; text-shadow: 0 1px 3px rgba(0,0,0,1); white-space: nowrap;
         }
 
         .result-container { display: none; flex-direction: column; align-items: center; gap: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px; }
@@ -129,12 +140,8 @@
         .btn.outline { background: transparent; border: 2px solid #64748b; color: #64748b; }
         .btn.outline:hover { background: #f1f5f9; }
 
-        /* 手機版隱藏螢幕校正按鈕 */
-        @media (max-width: 768px) {
-            #measureBtn { display: none !important; }
-        }
+        @media (max-width: 768px) { #measureBtn { display: none !important; } }
 
-        /* 校正 Modal 樣式 */
         #measureModal {
             display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); z-index:9999; 
             justify-content:center; align-items:center; flex-direction:column; color:white; padding: 10px; box-sizing: border-box; backdrop-filter: blur(5px);
@@ -188,11 +195,14 @@
 
             <div class="cropper-wrapper">
                 <img id="imageToCrop" style="max-width: 100%;">
+                
+                <!-- 輔助框 (文字移到外部，避免擋臉) -->
                 <div class="overlay-guide">
                     <div class="guide-line-top"></div>
-                    <div class="guide-text" style="top: 5%;">頭頂對齊紅線</div>
+                    <div class="guide-text" style="top: -30px;">頭頂對齊紅線</div>
+                    
                     <div class="guide-line-bottom"></div>
-                    <div class="guide-text" style="bottom: 5%;">下巴對齊紅線</div>
+                    <div class="guide-text" style="bottom: -30px;">下巴對齊紅線</div>
                 </div>
             </div>
             
@@ -408,17 +418,16 @@
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.fillRect(0, 0, this.canvasW, this.canvasH);
                 
-                // 設定參數：加大排與排中間的間隙 (gapY) 用來放尺
+                // 設定參數
                 const ROWS = 2; const COLS = 4;
-                const gapX = 15; // 左右間距
-                const gapY = 60; // ✨ 上下間距加大，留出空間給尺規
+                const gapX = 15; 
+                const gapY = 60; // 留出空間給尺規
                 
                 const totalContentW = (this.photoW * COLS) + (gapX * (COLS - 1));
                 const totalContentH = (this.photoH * ROWS) + gapY;
                 const startX = (this.canvasW - totalContentW) / 2;
                 const startY = (this.canvasH - totalContentH) / 2;
                 
-                // 繪製 8 張照片
                 for (let row = 0; row < ROWS; row++) {
                     for (let col = 0; col < COLS; col++) {
                         const x = startX + col * (this.photoW + gapX);
@@ -430,15 +439,14 @@
                     }
                 }
 
-                // --- 繪製不擋圖的 1cm 參考尺 (Center Position) ---
-                const oneCm = 300 / 2.54; // 1cm 像素量 (約 118px)
-                const rulerX = this.canvasW / 2 - (oneCm / 2); // 水平置中
-                const rulerY = startY + this.photoH + (gapY / 2); // 垂直放在兩排照片中間
+                // 1cm 參考尺 (置中)
+                const oneCm = 300 / 2.54; 
+                const rulerX = this.canvasW / 2 - (oneCm / 2); 
+                const rulerY = startY + this.photoH + (gapY / 2); 
                 
                 this.ctx.fillStyle = '#000000';
-                this.ctx.fillRect(rulerX, rulerY - 5, oneCm, 10); // 畫一個 1cm 寬的黑條
+                this.ctx.fillRect(rulerX, rulerY - 5, oneCm, 10); 
 
-                // 標示文字
                 this.ctx.font = 'bold 24px Arial';
                 this.ctx.textAlign = 'center';
                 this.ctx.fillText('1cm', this.canvasW / 2, rulerY + 30);
